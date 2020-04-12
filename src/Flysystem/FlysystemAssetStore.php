@@ -284,7 +284,7 @@ class FlysystemAssetStore implements AssetStore, AssetStoreRouter, Flushable
      * Any other value the closure returns (including `null`) will be returned to the calling function.
      *
      * @param callable $callable Action to apply.
-     * @param string|array|ParsedFileID $fileID File identication. Can be a string, a file tuple or a ParsedFileID
+     * @param string|array|ParsedFileID $fileID File identication. Can be a string, a file tuple or a ParsedFileID - sboyd: it's always ParsedFileID.  this is a private so we can just change file sig
      * @param bool $strictHashCheck
      * @return mixed
      */
@@ -303,39 +303,88 @@ class FlysystemAssetStore implements AssetStore, AssetStoreRouter, Flushable
         ];
 
         /** @var FileHashingService $hasher */
+        // sboyd
+        // $hasher is always a SilverStripe\Assets\Storage\Sha1FileHashingService
         $hasher = Injector::inst()->get(FileHashingService::class);
 
         /** @var Filesystem $fs */
         /** @var FileResolutionStrategy $strategy */
         /** @var string $visibility */
 
-
         // First we try to search for exact file id string match
+
+        // sboyd
+        // this seems strange to me.  why are we starting with the publicSet when we're in the CMS and there's all this draft stuff?
+        // is it cos all the published stuff will be in the public store?
+        // seems like there should more smarts .. canViewAnonymous() is faster so could default to which set is 99.9% likely to have file
+
+        // sboyd
+        // another option, just look for a hash in $parsedFileID->getFilename() && publicStore->NaturalFileHelper && protectedStore->HashedFile - that's most uses cases
+        // likewise, if there's no hash like thing in the url, and we know the protectedStore uses hashes, why even look in the protected store?
+        // this would however meant that any file with an ancestor foldername with 10 characters in it will load slower on the front end
+
+        // sboyd
+        // could even be worth checking if someone is logged in, if no $member then always start with publicSet
+        // (still need protectedSet avail i.e. ->getVisibility() still need to return 'protected' in that context
         foreach ([$publicSet, $protectedSet] as $set) {
+
+            // sboyd
+            // $fs is a League\Flysystem\Filesystem with an .adapater of Silverstripe\Assets\Flysystem\PublicAssetAdapater (or ProtectedAssetAdapter)
+            // $stategy is always a FileIDHelperResolutionStrategy
+            // $visibility is public|protected
             list($fs, $strategy, $visibility) = $set;
 
             // Get a FileID string based on the type of FileID
             $fileID =  $strategy->buildFileID($parsedFileID);
 
+            // sboyd
+            // file_exists() check
             if ($fs->has($fileID)) {
                 // Let's try validating the hash of our file
+
+                // sboyd
+                // this will also happen on files in the public store .. not sure why ... validating the file contents match the hash in the url?
+                // maybe file on system was updated independently of the db (where the hash exists) being updated?
                 if ($parsedFileID->getHash()) {
+
+                    // sboyd
+                    // this is done for the case where the relativeUrl requested was for a variant aka resized image
                     $mainFileID = $strategy->buildFileID($strategy->stripVariant($parsedFileID));
 
+                    // sboyd
+                    // another file_exists() check ... at very least should skip check if $fileID == $mainFileID since has already done a $fs->has($fileID) check above
                     if (!$fs->has($mainFileID)) {
                         // The main file doesn't exists ... this is kind of weird.
                         continue;
                     }
 
+                    // sboyd
+                    // this computed hash will be getting cached in /tmp a whole lot
+                    // there is however a lot of file_exists and finfo-like calls made cos the file meta timestamp
+                    // need to do this in case the physical file has changed indenpendently of the cache
+                    // is always retrieved to compare what's in the cache.  it'll be much cheaper than constantly
+                    // reading a file stream and computer the sha1 hash on the fly though
                     $actualHash = $hasher->computeFromFile($mainFileID, $fs);
+
+                    // sboyd
+                    // just a strpos() check, very cheap operation
                     if (!$hasher->compare($actualHash, $parsedFileID->getHash())) {
                         continue;
                     }
                 }
 
                 // We already have a ParsedFileID, we just need to set the matching file ID string
+
+                // sboyd
+                // basically what's happening here is that we start with ($filename, $hash, $variant)
+                // and we don't know what $fileID is.  we loop through the asset stores finding a match
+                // when we get to this point we've found a match, so we run ->setFileID($fileID)
+                // $closesureParsedFileID (mispelled) a new ParsedFileID returned by the immutable ->setFileID
                 $closesureParsedFileID = $parsedFileID->setFileID($fileID);
 
+                // sboyd
+                // now call the function passed in, this will be fairly fast most of the time and return something that's not false
+                // no realy need to worry about any code past this point
                 $response = $callable(
                     $closesureParsedFileID,
                     $fs,

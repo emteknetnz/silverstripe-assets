@@ -112,6 +112,8 @@ class Sha1FileHashingService implements FileHashingService, Flushable
 
     public function computeFromFile($fileID, $fs)
     {
+        // $this->get() should be called $this->getCacheValue()
+        // caching happens in the /tmp dir
         if ($hash = $this->get($fileID, $fs)) {
             return $hash;
         }
@@ -120,6 +122,7 @@ class Sha1FileHashingService implements FileHashingService, Flushable
         $stream = $fs->readStream($fileID);
         $hash = $this->computeFromStream($stream);
 
+        // $this->set() should be called $this->setCacheValue()
         $this->set($fileID, $fs, $hash);
 
         return $hash;
