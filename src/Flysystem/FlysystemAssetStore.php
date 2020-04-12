@@ -309,6 +309,7 @@ class FlysystemAssetStore implements AssetStore, AssetStoreRouter, Flushable
         /** @var FileResolutionStrategy $strategy */
         /** @var string $visibility */
 
+
         // First we try to search for exact file id string match
         foreach ([$publicSet, $protectedSet] as $set) {
             list($fs, $strategy, $visibility) = $set;
