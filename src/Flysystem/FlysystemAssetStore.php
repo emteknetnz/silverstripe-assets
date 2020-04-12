@@ -364,8 +364,7 @@ class FlysystemAssetStore implements AssetStore, AssetStoreRouter, Flushable
                     // there is however a lot of file_exists and finfo-like calls made every request cos the
                     // need to validate that the physical file metadata timestamp equals what's in the cache
                     // need to do this in case the physical file has changed independently of the cache
-                    // is always retrieved to compare what's in the cache.  it'll be much cheaper than constantly
-                    // reading a file stream and computing the sha1 hash on the fly though
+                    // it'll still be much cheaper than constantly reading a file stream and computing the sha1 hash on the fly though
                     $actualHash = $hasher->computeFromFile($mainFileID, $fs);
 
                     // sboyd
