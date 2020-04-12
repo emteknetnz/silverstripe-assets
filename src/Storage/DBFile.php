@@ -66,6 +66,15 @@ class DBFile extends DBComposite implements AssetContainer, Thumbnail
         'image/vnd.adobe.photoshop',
     );
 
+    private const EXISTS_CACHED_UNTESTED = 'EXISTS_CACHED_UNTESTED';
+    private const EXISTS_CACHED_TRUE = 'EXISTS_CACHED_TRUE';
+    private const EXISTS_CACHED_FALSE = 'EXISTS_CACHED_FALSE';
+
+    /**
+     * Uses to cache calls to ::exists() for the duration of the request
+     */
+    private $existsCached = self::EXISTS_CACHED_UNTESTED;
+
     /**
      * Create a new image manipulation
      *
@@ -359,12 +368,22 @@ class DBFile extends DBComposite implements AssetContainer, Thumbnail
 
     public function exists()
     {
+        if ($this->existsCached !== self::EXISTS_CACHED_UNTESTED) {
+            return $this->existsCached === self::EXISTS_CACHED_TRUE;
+        }
         if (empty($this->Filename)) {
             return false;
         }
-        return $this
+        $exists = $this
             ->getStore()
             ->exists($this->Filename, $this->Hash, $this->Variant);
+        $this->existsCached = $exists ? self::EXISTS_CACHED_TRUE : self::EXISTS_CACHED_FALSE;
+        return $exists;
+    }
+
+    private function resetExistsCached(): void
+    {
+        $this->existsCached = self::EXISTS_CACHED_UNTESTED;
     }
 
     public function getFilename()
@@ -545,7 +564,7 @@ class DBFile extends DBComposite implements AssetContainer, Thumbnail
         if (!$this->Filename) {
             return false;
         }
-
+        $this->resetExistsCached();
         return $this
             ->getStore()
             ->delete($this->Filename, $this->Hash);
@@ -554,6 +573,7 @@ class DBFile extends DBComposite implements AssetContainer, Thumbnail
     public function publishFile()
     {
         if ($this->Filename) {
+            $this->resetExistsCached();
             $this
                 ->getStore()
                 ->publish($this->Filename, $this->Hash);
@@ -563,6 +583,7 @@ class DBFile extends DBComposite implements AssetContainer, Thumbnail
     public function protectFile()
     {
         if ($this->Filename) {
+            $this->resetExistsCached();
             $this
                 ->getStore()
                 ->protect($this->Filename, $this->Hash);
@@ -600,6 +621,7 @@ class DBFile extends DBComposite implements AssetContainer, Thumbnail
         if (!$this->Filename) {
             return null;
         }
+        $this->resetExistsCached();
         $newName = $this
             ->getStore()
             ->rename($this->Filename, $this->Hash, $newName);
@@ -614,6 +636,7 @@ class DBFile extends DBComposite implements AssetContainer, Thumbnail
         if (!$this->Filename) {
             return null;
         }
+        $this->resetExistsCached();
         return $this
             ->getStore()
             ->copy($this->Filename, $this->Hash, $newName);
