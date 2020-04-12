@@ -349,7 +349,7 @@ class FlysystemAssetStore implements AssetStore, AssetStoreRouter, Flushable
                 if ($parsedFileID->getHash()) {
 
                     // sboyd
-                    // this is done for the case where the relativeUrl requested was for a variant aka resized image
+                    // this is done for the case where the ($fileID/relative-path/File::FileFilename) requested was for a variant aka resized image
                     $mainFileID = $strategy->buildFileID($strategy->stripVariant($parsedFileID));
 
                     // sboyd
@@ -382,7 +382,8 @@ class FlysystemAssetStore implements AssetStore, AssetStoreRouter, Flushable
                 // ($filename, $hash, $variant) and we don't know what $fileID is.
                 // we loop through the asset stores looking for a match
                 // when we've reached this point it means we've got a match, so we run ->setFileID($fileID)
-                // $closesureParsedFileID (mispelled) is a new ParsedFileID returned by the immutable ->setFileID($fileID)
+                // remember that $fileID is a basically a relative-path and File::FileFilename when public
+                // this basically translates "this is what the relative path of the file is"
                 $closesureParsedFileID = $parsedFileID->setFileID($fileID);
 
                 // sboyd
