@@ -343,8 +343,9 @@ class FlysystemAssetStore implements AssetStore, AssetStoreRouter, Flushable
                 // Let's try validating the hash of our file
 
                 // sboyd
-                // this will also happen on files in the public store .. not sure why ... validating the file contents match the hash in the url?
-                // maybe file on system was updated independently of the db (where the hash exists) being updated?
+                // validate that physical file has matches the hash in the database (not the url)
+                // this is run on both the public and protected asset stores
+                // is done to check if file on system was updated independently of the db hash
                 if ($parsedFileID->getHash()) {
 
                     // sboyd
