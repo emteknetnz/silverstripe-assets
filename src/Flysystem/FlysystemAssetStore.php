@@ -360,10 +360,11 @@ class FlysystemAssetStore implements AssetStore, AssetStoreRouter, Flushable
 
                     // sboyd
                     // this computed hash will be getting cached in /tmp a whole lot
-                    // there is however a lot of file_exists and finfo-like calls made cos the file meta timestamp
-                    // need to do this in case the physical file has changed indenpendently of the cache
+                    // there is however a lot of file_exists and finfo-like calls made every request cos the
+                    // need to validate that the physical file metadata timestamp equals what's in the cache
+                    // need to do this in case the physical file has changed independently of the cache
                     // is always retrieved to compare what's in the cache.  it'll be much cheaper than constantly
-                    // reading a file stream and computer the sha1 hash on the fly though
+                    // reading a file stream and computing the sha1 hash on the fly though
                     $actualHash = $hasher->computeFromFile($mainFileID, $fs);
 
                     // sboyd
@@ -376,10 +377,11 @@ class FlysystemAssetStore implements AssetStore, AssetStoreRouter, Flushable
                 // We already have a ParsedFileID, we just need to set the matching file ID string
 
                 // sboyd
-                // basically what's happening here is that we start with ($filename, $hash, $variant)
-                // and we don't know what $fileID is.  we loop through the asset stores finding a match
-                // when we get to this point we've found a match, so we run ->setFileID($fileID)
-                // $closesureParsedFileID (mispelled) a new ParsedFileID returned by the immutable ->setFileID
+                // basically what's happening here is that we start outside of applyToFileOnFilesystem() with
+                // ($filename, $hash, $variant) and we don't know what $fileID is.
+                // we loop through the asset stores looking for a match
+                // when we've reached this point it means we've got a match, so we run ->setFileID($fileID)
+                // $closesureParsedFileID (mispelled) is a new ParsedFileID returned by the immutable ->setFileID($fileID)
                 $closesureParsedFileID = $parsedFileID->setFileID($fileID);
 
                 // sboyd
